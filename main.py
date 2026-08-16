@@ -5,7 +5,7 @@ import telebot
 from telebot import types
 
 TOKEN = "8816940858:AAEwDQ94ues00rcG1RVkNMPumQh7Xxgfowc"
-ADMIN_ID = 8816940858  # Admin ID raqamingiz
+ADMIN_ID = 8816940858
 
 CHANNELS = ["@max_films01", "@reklamuchun1", "@uzmafia02"]
 
@@ -163,7 +163,13 @@ def lang_select(call):
 
 # --- VIP OBUNA ---
 @bot.message_handler(func=lambda message: message.text in [TEXTS['uz']['vip_menu'], TEXTS['ru']['vip_menu'], TEXTS['en']['vip_menu']])
+def vip_subscription_menu_msg(message):
+    vip_subscription_menu(message)
+
 @bot.callback_query_handler(func=lambda call: call.data == "btn_vip_menu")
+def vip_subscription_menu_call(call):
+    vip_subscription_menu(call)
+
 def vip_subscription_menu(event):
     chat_id = event.message.chat.id if hasattr(event, 'message') else event.chat.id
     user_id = event.from_user.id
@@ -186,10 +192,10 @@ def vip_subscription_menu(event):
         markup.add(types.InlineKeyboardButton("6 oylik — 35,000 so'm", callback_data="pay_uz_6"))
         text = "💎 **Premium Obuna**\nTarifni tanlang:"
 
-    if hasattr(event, 'message'):
+    if hasattr(event, 'message') and not isinstance(event, types.CallbackQuery):
         bot.send_message(chat_id, text, reply_markup=markup, parse_mode="Markdown")
     else:
-        bot.edit_message_text(text, chat_id, event.message.message_id, reply_markup=markup, parse_mode="Markdown")
+        bot.send_message(chat_id, text, reply_markup=markup, parse_mode="Markdown")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("pay_"))
 def vip_payment_details(call):
@@ -393,4 +399,4 @@ def admin_movie_control(call):
 
 if __name__ == "__main__":
     bot.infinity_polling()
-
+    
