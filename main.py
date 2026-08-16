@@ -5,7 +5,7 @@ import telebot
 from telebot import types
 
 TOKEN = "8816940858:AAEwDQ94ues00rcG1RVkNMPumQh7Xxgfowc"
-ADMIN_ID = 8816940858
+ADMIN_ID = 8753350906  # Sizning ID raqamingiz
 
 CHANNELS = ["@max_films01", "@reklamuchun1", "@uzmafia02"]
 
@@ -70,7 +70,7 @@ TEXTS = {
         'admin_add': "🎬 Добавить через админа",
         'lang_change': "🌐 Сменить язык",
         'oddiy_video': "🎬 Добавить обычное видео",
-        'vip_video': "💎 Добавить VIP видео"
+        'vip_video': "🎬 Добавить VIP видео"
     },
     'en': {
         'menu': "✅ Main Menu:",
@@ -192,10 +192,7 @@ def vip_subscription_menu(event):
         markup.add(types.InlineKeyboardButton("6 oylik — 35,000 so'm", callback_data="pay_uz_6"))
         text = "💎 **Premium Obuna**\nTarifni tanlang:"
 
-    if hasattr(event, 'message') and not isinstance(event, types.CallbackQuery):
-        bot.send_message(chat_id, text, reply_markup=markup, parse_mode="Markdown")
-    else:
-        bot.send_message(chat_id, text, reply_markup=markup, parse_mode="Markdown")
+    bot.send_message(chat_id, text, reply_markup=markup, parse_mode="Markdown")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("pay_"))
 def vip_payment_details(call):
