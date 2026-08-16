@@ -13,11 +13,10 @@ CHANNELS = ["@max_films01", "@reklamuchun1", "@uzmafia02"]
 bot = telebot.TeleBot(TOKEN)
 user_states = {}
 
-# --- SQLITE BAZA BILAN ISHLASH ---
+# --- SQLITE BAZA ---
 def init_db():
     conn = sqlite3.connect('bot_database.db', check_same_thread=False)
     cursor = conn.cursor()
-    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -27,7 +26,6 @@ def init_db():
             is_banned INTEGER DEFAULT 0
         )
     ''')
-    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS movies (
             code TEXT PRIMARY KEY,
@@ -43,7 +41,7 @@ init_db()
 def get_db():
     return sqlite3.connect('bot_database.db', check_same_thread=False)
 
-# --- FLASK SERVER (RENDER UCHUN) ---
+# --- FLASK SERVER (RENDER) ---
 app = Flask('')
 @app.route('/')
 def home():
@@ -54,7 +52,7 @@ def run():
 
 Thread(target=run).start()
 
-# --- YORDAMCHI FUNKSIYALAR ---
+# --- TEKSHIRUVLAR ---
 def check_sub(user_id):
     if user_id == ADMIN_ID:
         return True
@@ -123,7 +121,7 @@ TEXTS = {
         'admin_add': "🎬 Добавить через админа",
         'lang_change': "🌐 Сменить язык",
         'oddiy_video': "🎬 Добавить обычное видео",
-        'vip_video': "🎬 Добавить VIP видео",
+        'vip_video': "💎 Добавить VIP видео",
         'reklama': "📢 Реклама"
     },
     'en': {
@@ -155,12 +153,12 @@ def show_main_menu(chat_id, user_id):
     markup.row(get_text(user_id, 'admin_add'), get_text(user_id, 'vip_menu'))
     markup.row(get_text(user_id, 'reklama'), get_text(user_id, 'lang_change'))
     
+    # Admin uchun doimiy ravishda quyidagi tugmalar chiqadi
     if user_id == ADMIN_ID:
-        markup.row(get_text(user_id, 'oddiy_video'), get_text(user_id, 'vip_video'))
+        markup.row("🎬 Oddiy video qo'shish", "💎 VIP video qo'shish")
         
     bot.send_message(chat_id, get_text(user_id, 'menu'), reply_markup=markup)
 
-# --- START VA OBUNA ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     user_id = message.from_user.id
@@ -314,7 +312,7 @@ def lang_select(call):
         pass
     show_main_menu(call.message.chat.id, user_id)
 
-# --- REKLAMA TUGMASI ---
+# --- REKLAMA ---
 @bot.message_handler(func=lambda message: message.text in [TEXTS['uz']['reklama'], TEXTS['ru']['reklama'], TEXTS['en']['reklama']])
 def reklama_link_handler(message):
     markup = types.InlineKeyboardMarkup()
@@ -375,7 +373,7 @@ def vip_payment_details(call):
     user_states[call.from_user.id] = f"waiting_for_check_{period}"
     bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
 
-# --- ASOSIY MENYU TUGMALARI ---
+# --- MENYU FUNKSIYALARI ---
 @bot.message_handler(func=lambda message: message.text in [TEXTS['uz']['recommend'], TEXTS['ru']['recommend'], TEXTS['en']['recommend']])
 def recommend_movie(message):
     user_states[message.from_user.id] = "recommending_movie"
@@ -405,27 +403,30 @@ def random_movie(message):
         import random
         code, video_id, is_vip = random.choice(movies)
         if is_vip == 1 and not is_user_vip(message.from_user.id):
-            bot.send_message(message.chat.id, "💎 Bu tasodifiy tanlangan kino **VIP** obunachilar uchun mo'ljallangan! Obuna sotib oling.", parse_mode="Markdown")
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton("💎 Premium Obuna sotib olish", callback_data="btn_vip_menu"))
+            bot.send_message(message.chat.id, "💎 Bu tasodifiy tanlangan kino **VIP** obunachilar uchun mo'ljallangan!", reply_markup=markup, parse_mode="Markdown")
             return
         bot.send_video(message.chat.id, video_id, caption=f"🎲 Tasodifiy kino (Kodi: `{code}`)", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda message: message.text in [TEXTS['uz']['search'], TEXTS['ru']['search'], TEXTS['en']['search']])
 def search_hint(message):
-    bot.send_message(message.chat.id, "🔎 Kino topish uchun kino **kodini** yuboring (masalan: `1`, `7` yoki `m1`):", parse_mode="Markdown")
+    bot.send_message(message.chat.id, "🔎 Kino topish uchun kino **kodini** yuboring (masalan: `1`, `120` yoki `122`):", parse_mode="Markdown")
 
-@bot.message_handler(func=lambda message: message.text in [TEXTS['uz']['oddiy_video'], TEXTS['ru']['oddiy_video'], TEXTS['en']['oddiy_video']])
+# --- ADMIN VIDEO QO'SHISH TUGMALARI ---
+@bot.message_handler(func=lambda message: message.text == "🎬 Oddiy video qo'shish")
 def admin_oddiy_start(message):
     if message.from_user.id == ADMIN_ID:
         user_states[message.from_user.id] = {"step": "admin_direct_wait_video", "type": 0}
         bot.send_message(message.chat.id, "📤 Oddiy videoni yuboring:")
 
-@bot.message_handler(func=lambda message: message.text in [TEXTS['uz']['vip_video'], TEXTS['ru']['vip_video'], TEXTS['en']['vip_video']])
+@bot.message_handler(func=lambda message: message.text == "💎 VIP video qo'shish")
 def admin_vip_start(message):
     if message.from_user.id == ADMIN_ID:
         user_states[message.from_user.id] = {"step": "admin_direct_wait_video", "type": 1}
         bot.send_message(message.chat.id, "📤 VIP videoni yuboring:")
 
-# --- XABARLARNI QAYTA ISHLASH (VIDEO, RASM, MATN) ---
+# --- XABARLARNI QAYTA ISHLASH ---
 @bot.message_handler(content_types=['text', 'video', 'photo'])
 def handle_all_inputs(message):
     user_id = message.from_user.id
@@ -439,7 +440,7 @@ def handle_all_inputs(message):
         if message.video and isinstance(state, dict) and state.get("step") == "admin_direct_wait_video":
             user_states[user_id]["video"] = message.video.file_id
             user_states[user_id]["step"] = "admin_direct_wait_code"
-            bot.reply_to(message, "🔢 Video qabul qilindi. Endi kodini yuboring:")
+            bot.reply_to(message, "🔢 Video qabul qilindi. Endi kino kodini yuboring (masalan: 120, 122):")
             return
 
         if isinstance(state, dict) and state.get("step") == "admin_direct_wait_code":
@@ -455,7 +456,7 @@ def handle_all_inputs(message):
             
             user_states.pop(user_id, None)
             v_name = "VIP" if v_type == 1 else "ODDIY"
-            bot.reply_to(message, f"✅ Muvaffaqiyatli! `{code}` kodli **{v_name}** video bazaga qo'shildi.", parse_mode="Markdown")
+            bot.reply_to(message, f"✅ Muvaffaqiyatli! `{code}` kodli **{v_name}** kino bazaga saqlandi.", parse_mode="Markdown")
             return
 
     if state and state.startswith("waiting_for_check_"):
@@ -483,5 +484,4 @@ def handle_all_inputs(message):
         return
 
     if state == "personal_add_video" and message.video:
-        user_states[user_id] = {"video": message.video.file_id, "step": "personal_get_code"}
-        bot.reply_to(message, "🔢 Bu kino u
+        user_states[user_id] = {"video": message.video.file_id, "ste
